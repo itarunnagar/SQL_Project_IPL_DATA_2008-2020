@@ -11,6 +11,9 @@ from Dataset_01
 group by winner) b 
 on a.toss_winner = b.winner ; 
 --Most Title Wins.
+--How Toss Decision Varies Acroos Season
+--Does Winning The Toss Implies winning the games.
+--Particular Batsman Analysis..
 
 --USe the Database...
 use Project03_IPL_Data_Exploration_2008_20 ; 
@@ -159,10 +162,11 @@ from Dataset_01
 group by team2 ) 
 select Teams , sum(Numbers_of_Matches_PLayed)  as Total_matches_PLyaed
 from ABC 
-group by Teams ;
+group by Teams 
+order by Total_matches_PLyaed desc;
 
 
---Total Numbers of Matches PLayed Per Year..By using CTE
+--Total Numbers of Matches PLayed Per Year by Each Team ..By using CTE
 With CC as (select Years , team1 as Teams, count(team1) as Numbers_of_matches_played
 from (select * , year(date) as  Years
 from Dataset_01 ) ABC
@@ -177,7 +181,7 @@ from CC
 group by Years , Teams
 order by Years ; 
 
---Total Numbers of Matches PLayed Per Year..By using SubQueries
+--Total Numbers of Matches PLayed Per Year by per team..By using SubQueries
 select Years , Teams , sum(Numbers_of_matches_played) as Total_Matches_Played_Per_Year
 from (select Years , team1 as Teams, count(team1) as Numbers_of_matches_played
 from (select * , year(date) as  Years
@@ -261,17 +265,127 @@ group by bowler
 order by Total_Wicket_Taken desc , Total_Runs asc ; 
 
 --Count of Matches PLayed in Each Season..
+select Years , sum(Number_of_Matches) as Numbers_of_MAtches
+from(select Years , winner as Teams , count(winner) as Number_of_Matches
+from (select * , year(date) as Years 
+from Dataset_01) A
+group by Years , winner ) A 
+group by Years ; 
+
 --Runs Scored In Each Season
+select Years , sum(total_runs) as Total_Runs
+from (select  b.* , year(date) as Years from Dataset_01 a inner join  dataset_02 b
+on a.id = b.id) ABC
+group by Years  ;
+
 --Runs Scroed in Per Match in Differeent Season
+select Years , id , inning , sum(total_runs) as Runs_Per_Match
+from (select b.* , year(date) as Years from Dataset_01 a inner join dataset_02 b on a.id = b.id) A
+group by Years , inning , id
+order by id ;
+
 --Who Has Umpired the Most
+WitH ABC as (
+select umpire1  as Umpire_NAme, COUNT(umpire1) as Numbers_of_Time_Present
+from Dataset_01
+group by umpire1 
+union all
+select umpire2 , COUNT(umpire2) as Numbers_of_Time_Present
+from Dataset_01
+group by umpire2 )
+select Umpire_NAme , sum(Numbers_of_Time_Present) as Numbers_of_Time_Present , 
+DENSE_RANK() over(order by sum(Numbers_of_Time_Present) desc) as Rnks 
+from ABC 
+group by Umpire_NAme ;
+
+
 --Which Team has won the most Tosses.
+select toss_winner , count(toss_winner) as Numbers_of_Times_Wins , 
+DENSE_RANK() over(order by count(toss_winner) desc)as Rnks
+from Dataset_01
+group by toss_winner; 
+
+
 --What the team decide after winning the toss.
---How Toss Decision Varies Acroos Season
---Does Winning The Toss Implies winning the games.
+select toss_winner , toss_decision , 
+count(toss_decision) as Numbers_of_Decision
+from Dataset_01
+group by toss_winner , toss_decision 
+order by toss_winner ; 
+
 --How many times chasing team win the match..
---Which All Team Had Won These Tournaments
---Which Team had played most numbers of Matches
---Which Team Has Won the Most Numbers of Times.
+select Numbers_of_Wins , sum(Numbers_of_Wins) as Total_Wins_By_Chasing_teams
+from (select a.id , bowling_team , winner , 
+case when bowling_team = winner then 1
+else 0
+end as Numbers_of_Wins
+from Dataset_01 a join Dataset_02 b 
+on a.id = b.id 
+where b.inning = 1 
+group by a.id , bowling_team , winner) ABCD
+group by Numbers_of_Wins ;
+
 --Which Team Has The Highest Winnign PErcantage 
+select winner , count(winner) as Numbers_of_times_Wins , DENSE_RANK() over(order by count(winner) desc) rnks
+from Dataset_01 group by winner;  
+
 --Is there any lucky venue for particular team.
--- Comparision Between Two Teams
+--All The Lucky Where Team Matches Wins High Numbers..
+select *
+from (select Venue ,  Winner , count(winner) as Numbers_of_times_Wins , 
+DENSE_RANK() over(partition by winner order by count(winner) desc) Rnks
+from Dataset_01 
+group by venue ,  winner ) ABC
+where rnks = 1 ;
+
+
+--Which Team HAs Scored The MOst Numbers of 200+ Scores..
+select batting_team , count(batting_team) as NUmmbers_of_time_Above_200
+from (select  id , inning ,batting_team ,  sum(total_runs) as Runs_Per_Match
+from (select b.* , year(date) as Years from Dataset_01 a inner join dataset_02 b on a.id = b.id) A
+group by  inning , id , batting_team) ABC
+where Runs_Per_Match >= 200 
+group by batting_team
+order by NUmmbers_of_time_Above_200 desc ;
+
+
+--Which Team HAs Conceeded 200+ Scores The Most.
+select *
+from (select * , DENSE_RANK() over(order by NUmmbers_of_time_Above_200 desc) Rnks
+from (select batting_team , count(batting_team) as NUmmbers_of_time_Above_200
+from (select  id , inning ,batting_team ,  sum(total_runs) as Runs_Per_Match
+from (select b.* , year(date) as Years from Dataset_01 a inner join dataset_02 b on a.id = b.id) A
+group by  inning , id , batting_team) ABC
+where Runs_Per_Match >= 200 
+group by batting_team) ABCDE ) DEF
+where Rnks <= 5 ;
+
+
+-- Highest Runs Scored By Any Team In Any SIngle Match 
+select * from Dataset_02 ; 
+-- Bigggest Win In Term of Runs MArgin
+-- Which Batsman Have played the most numbers of balls
+--Who are the leading runs scorer of all time 
+--Leading Wicket Taker
+--Which Stadium Has HOsted the Most Numbers of MAtches
+--Who Has won the   Most MOM Awards
+--Count Hit of 4s In Each Season
+--COunt Hit of 6s In Each Season
+--Count 0f Runs Scored From Boundaries in each season average and Total Runs.
+--Runs Per  Over of Each Team
+--Power Play Analysis 
+--Runs in PowerPLay of  Each Team
+--PowerPlay AVerage Runs
+--Power PLay Average Dismissals 
+--Top 10 Batsman Overall
+--Top 10 batsman in runs category
+--Orange Cap Holder
+--Best Bowler In Each Category
+--Purple Cap Holders
+--Top  Bowlers
+--Winner Analysis 
+--Which Team win Highest Numbers of Season
+--Match PLayed VS Win in Final MAtch 
+--is Toss Decision is Final Decision in Finals
+--Which Team has scored the most runs inlast 4 overs ?
+--Percantage of Wins of Each Category
