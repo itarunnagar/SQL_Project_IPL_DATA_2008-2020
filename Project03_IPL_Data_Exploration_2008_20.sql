@@ -1,20 +1,3 @@
---Pending Questions..
--- 1..Highest Strike Rate.
---2...Does Toss Winning Affect the Match Winner 
---Toss/Win Ratio.
-select a.toss_winner , a.Numbers_of_times_Wins_Toss , b.Numbers_of_times_MAtches_Wins ,
-(a.Numbers_of_times_Wins_Toss / b.Numbers_of_times_MAtches_Wins) * 100 Percantage
-from (select toss_winner , count(toss_winner) as Numbers_of_times_Wins_Toss
-from Dataset_01 
-group by toss_winner) a join (select winner , count(winner) as Numbers_of_times_MAtches_Wins
-from Dataset_01 
-group by winner) b 
-on a.toss_winner = b.winner ; 
---Most Title Wins.
---How Toss Decision Varies Acroos Season
---Does Winning The Toss Implies winning the games.
---Particular Batsman Analysis..
-
 --USe the Database...
 use Project03_IPL_Data_Exploration_2008_20 ; 
 
@@ -361,31 +344,225 @@ group by batting_team) ABCDE ) DEF
 where Rnks <= 5 ;
 
 
--- Highest Runs Scored By Any Team In Any SIngle Match 
-select * from Dataset_02 ; 
--- Bigggest Win In Term of Runs MArgin
+-- Highest Runs Scored By Any Team In Any Single Match 
+select *
+from (select id , inning , batting_team , sum(total_runs) as Total_Runs , DENSE_RANK() over(order by sum(total_runs) desc) as Rnks
+from Dataset_02 
+group by id , inning , batting_team) ABC
+where Rnks = 1 ;
+
+
+-- Highest Top 10 Runs Scored By Any Team In Any Single Match 
+select *
+from (select id , inning , batting_team , sum(total_runs) as Total_Runs , DENSE_RANK() over(order by sum(total_runs) desc) as Rnks
+from Dataset_02 
+group by id , inning , batting_team) ABC
+where Rnks <= 10 ;
+
+--Bigggest Win In Term of Runs MArgin
+select *
+from (select *, DENSE_RANK() over(order by result_margin desc) as Rnks
+from Dataset_01 ) ABC
+where rnks = 1 ;
+
+
 -- Which Batsman Have played the most numbers of balls
+select batsman ,count(bowler) as Numbers_of_Bowls , 
+dense_rank() over(order by count(bowler) desc) as Rnks
+from Dataset_02
+group by batsman ; 
+
+
 --Who are the leading runs scorer of all time 
+select batsman , sum(batsman_runs) as Total_Runs_By_BAtsman , 
+DENSE_RANK() over(order by sum(batsman_runs) desc) as Rnks
+from Dataset_02
+group by batsman ; 
+
+
 --Leading Wicket Taker
+select bowler , sum(is_wicket) as Numbers_of_Wicket_Taken , DENSE_RANK() over(order by sum(is_wicket) desc)
+from Dataset_02
+group by bowler ; 
+
 --Which Stadium Has HOsted the Most Numbers of MAtches
---Who Has won the   Most MOM Awards
+select venue , count(distinct id) as Numbers_of_Matches , 
+DENSE_RANK() over(order by count(distinct id)desc) as Rnks
+from Dataset_01 
+group by venue ;  
+
+
+--Who Has won the  Most MOM Awards
+select player_of_match , count(player_of_match) as Numbers_of_MOM , DENSE_RANK() over(order by count(player_of_match) desc) as Rnks
+from Dataset_01
+group by player_of_match ; 
+
+
 --Count Hit of 4s In Each Season
+select  years , count(years) as Numbers_of_4S 
+from (select a.id , year(a.date) as Years 
+from Dataset_01 a inner join Dataset_02 b
+on a.id = b.id
+where b.batsman_runs = 4 ) GHI 
+group by years
+order by years ;  
+
 --COunt Hit of 6s In Each Season
+select  years , count(years) as Numbers_of_Sixes 
+from (select a.id , year(a.date) as Years 
+from Dataset_01 a inner join Dataset_02 b
+on a.id = b.id
+where b.batsman_runs = 6 ) GHI 
+group by years
+order by years ; 
+
 --Count 0f Runs Scored From Boundaries in each season average and Total Runs.
---Runs Per  Over of Each Team
---Power Play Analysis 
---Runs in PowerPLay of  Each Team
+select Years , sum(total_runs) as Total_Runs_By_4s_6s
+from (select a.id , a.batsman , a.batsman_runs , a.total_runs , year(date) as Years
+from Dataset_02 a inner join Dataset_01 b
+on a.id = b.id
+where total_runs = 6 or total_runs = 4   ) ABC
+group by Years ;
+
+
+--Runs in PowerPLay of  Each Team    
+select batting_team , sum(total_runs) as Total_Runs_Made_In_POwerPLay
+from Dataset_02  a inner join Dataset_01 b
+on a.id = b.id 
+where overs >= 1 and overs <= 6
+group by a.batting_team 
+order by Total_Runs_Made_In_POwerPLay desc ;
+
+--Total Numbers of Matches..
+select count(distinct id) from Dataset_01 ;
+
+
 --PowerPlay AVerage Runs
---Power PLay Average Dismissals 
---Top 10 Batsman Overall
+select round((Total_Runs_In_PowerPLay/Total_Matches_Played),0) as Average_Runs
+from (select sum(total_runs) as Total_Runs_In_PowerPLay , 
+(select count(distinct id) from Dataset_01) as Total_Matches_Played
+from Dataset_02 
+where overs >= 1 and overs <= 6 ) ABC ;
+
+
+--Total Wicket in PowerPLay..
+select Bowler , sum(is_wicket) as Total_Numbers_of_Wickets
+from Dataset_02 
+where overs >= 1 and overs <= 6
+group by bowler 
+order by Total_Numbers_of_Wickets desc ;
+ 
+
+--Numbers of Fileder Who Cuaght Catch Times or Any Things That Lead to Wicket..
+select fielder ,count(fielder) as Times 
+from Dataset_02 
+where fielder  not in ('NA')
+group by fielder
+order by Times desc ; 
+
+
 --Top 10 batsman in runs category
---Orange Cap Holder
---Best Bowler In Each Category
+select *
+from (select batsman , sum(total_runs) as Runs_Make_By_Batsman , 
+DENSE_RANK() over(order by sum(total_runs) desc) as Rnks
+from Dataset_02
+group by batsman ) ABC
+where Rnks <= 10 ; 
+
+
+--Top 10 Batsman Overall 
+select *
+from (select a.Batsman , B.fielder , Helps_To_Wickets , Total_Runs , 
+DENSE_RANK() over(order by Total_Runs desc, Helps_To_Wickets desc ) as Rnks
+from (select batsman , sum(total_runs) as Total_Runs
+from Dataset_02 
+group by batsman ) A full outer join (select fielder ,count(fielder) as Helps_To_Wickets from Dataset_02 where fielder  not in ('NA')
+group by fielder ) B 
+on b.fielder = a.batsman ) ABC
+where rnks <= 10 ;
+
+
+--Orange Cap Holder -- Means The Highest Runs Scorer in Every Season  
+select * 
+from(select Years , batsman , sum(batsman_runs) as Total_Runs_By_Batsman, 
+DENSE_RANK() over(partition by Years order by sum(batsman_runs) desc) as Rnks
+from (select b.id ,b.batsman , b.batsman_runs ,year(date) as Years 
+from Dataset_01 a inner join Dataset_02 b 
+on a.id = b.id ) ABC 
+group by Years , batsman) CDE
+where rnks = 1;
+
 --Purple Cap Holders
+select years , bowler , Total_NUmbers_Of_Wicket
+from (select years ,  bowler ,sum(is_wicket) as Total_NUmbers_Of_Wicket , 
+DENSE_RANK() over(partition by years  order by sum(is_wicket)desc) as Rnks
+from (select bowler , is_wicket  , year(date) as Years 
+from Dataset_02  a join Dataset_01 b 
+on a.id = b.id) ABC
+group by Years , bowler) GHI
+where Rnks = 1  ; 
+
+
+--Best Bowler In Each Category
+select bowler , sum(is_wicket) as Numbers_of_Wickets , sum(total_runs) as Runs
+from Dataset_02 
+group by bowler
+order by Numbers_of_Wickets desc , Runs asc; 
+
+
 --Top  Bowlers
---Winner Analysis 
---Which Team win Highest Numbers of Season
---Match PLayed VS Win in Final MAtch 
---is Toss Decision is Final Decision in Finals
+select *
+from (select bowler , sum(is_wicket) as Numbers_of_Wickets , sum(total_runs) as Runs , 
+DENSE_RANK() over(order by sum(is_wicket) desc , sum(total_runs) asc) as Rnks
+from Dataset_02 
+group by bowler ) Gi
+where Rnks <= 10 ;
+
+
 --Which Team has scored the most runs inlast 4 overs ?
---Percantage of Wins of Each Category
+select batting_team , sum(total_runs) as Total_Runs ,
+DENSE_RANK() over(order by sum(total_runs) desc) as Rnks
+from Dataset_02 
+where overs >= 16 and overs <= 20
+group by batting_team ; 
+
+
+--Which Team win Title Year Wise
+select Years , winner
+from (select * , DENSE_RANK() over(partition by Years order by date desc) as Rnks
+from ( select b.id , Inning,  a.date, a.venue , team1 , team2 , winner , batsman , batsman_runs , total_runs , batting_team ,bowling_team
+,is_wicket, year(date) as Years 
+from Dataset_01 a inner join Dataset_02 b
+on a.id =  b.id ) ABC )GHi
+where Rnks = 1 
+group by Years , winner
+order by Years ; 
+
+
+--Which Team win Highest Numbers of Season 
+select winner , count(winner) as Number_of_Times_Wins
+from (select Years , winner
+from (select * , DENSE_RANK() over(partition by Years order by date desc) as Rnks
+from ( select b.id , Inning,  a.date, a.venue , team1 , team2 , winner , batsman , batsman_runs , total_runs , batting_team ,bowling_team
+,is_wicket, year(date) as Years 
+from Dataset_01 a inner join Dataset_02 b
+on a.id =  b.id ) ABC )GHi
+where Rnks = 1 
+group by Years , winner) GHIR
+group  by winner 
+order by Number_of_Times_Wins desc;
+
+--Most Title Wins.
+select *
+from (select winner , count(winner) as Number_of_Times_Wins , DENSE_RANK() over(order by count(winner) desc) Rnks
+from (select Years , winner
+from (select * , DENSE_RANK() over(partition by Years order by date desc) as Rnks
+from ( select b.id , Inning,  a.date, a.venue , team1 , team2 , winner , batsman , batsman_runs , total_runs , batting_team ,bowling_team
+,is_wicket, year(date) as Years 
+from Dataset_01 a inner join Dataset_02 b
+on a.id =  b.id ) ABC )GHi
+where Rnks = 1 
+group by Years , winner) GHIR
+group  by winner ) GHID
+where rnks <= 3 ; 
+
