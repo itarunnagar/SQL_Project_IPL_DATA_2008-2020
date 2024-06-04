@@ -59,6 +59,7 @@ from (select winner , count(winner) as Numbers_of_Times_Wins
 from Dataset_01
 group by winner ) ABC ;
 
+
 --Top Venue Where MAtch Played
 select venue , count(venue) as Numbers_of_match_PLayed , DENSE_RANK() over(order by count(venue) desc) as Rnkss
 from Dataset_01
@@ -114,12 +115,13 @@ group by batsman) A
 where Rnks < 11 ;
 
 
---3000Runs Club 
+--5000 Runs Club 
 select *
 from (select batsman , sum(batsman_runs) as Runs_Scored 
 from Dataset_02
 group by batsman) A
-where Runs_Scored >= 3000 ; 
+where Runs_Scored >= 5000
+order by Runs_Scored desc ; 
  
 
 --Total Numbers of  Matches Till 2020
@@ -490,7 +492,7 @@ from (select b.id ,b.batsman , b.batsman_runs ,year(date) as Years
 from Dataset_01 a inner join Dataset_02 b 
 on a.id = b.id ) ABC 
 group by Years , batsman) CDE
-where rnks = 1;
+where rnks = 1 ;
 
 --Purple Cap Holders
 select years , bowler , Total_NUmbers_Of_Wicket
